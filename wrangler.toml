@@ -3,3 +3,7 @@ name = "gemini-balance-lite"
 main = "src/index.js"
 compatibility_date = "2025-06-17"
 compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# pwd = "YOUR_SERVICE_PASSWORD"
+# key = '["YOUR_GEMINI_API_KEY_1", "YOUR_GEMINI_API_KEY_2"]'

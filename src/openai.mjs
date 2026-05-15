@@ -6,7 +6,7 @@
 import { Buffer } from "node:buffer";
 
 export default {
-  async fetch (request) {
+  async fetch (request, env) {
     if (request.method === "OPTIONS") {
       return handleOPTIONS();
     }
@@ -17,7 +17,21 @@ export default {
     try {
       const auth = request.headers.get("Authorization");
       let apiKey = auth?.split(" ")[1];
-      if (apiKey && apiKey.includes(',')) {
+      
+      if (env && env.pwd && env.key) {
+        if (apiKey !== env.pwd) {
+          return new Response('Unauthorized', fixCors({ status: 401 }));
+        }
+        try {
+          const keysArray = JSON.parse(env.key);
+          if (Array.isArray(keysArray) && keysArray.length > 0) {
+            apiKey = keysArray[Math.floor(Math.random() * keysArray.length)];
+            console.log(`OpenAI Selected API Key from env JSON: ${apiKey}`);
+          }
+        } catch(e) {
+          console.error("Failed to parse env.key as JSON array", e);
+        }
+      } else if (apiKey && apiKey.includes(',')) {
         const apiKeys = apiKey.split(',').map(k => k.trim()).filter(k => k);
         apiKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
         console.log(`OpenAI Selected API Key: ${apiKey}`);

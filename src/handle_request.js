@@ -1,7 +1,7 @@
 import { handleVerification } from './verify_keys.js';
 import openai from './openai.mjs';
 
-export async function handleRequest(request) {
+export async function handleRequest(request, env) {
 
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -20,15 +20,34 @@ export async function handleRequest(request) {
 
   // 处理OpenAI格式请求
   if (url.pathname.endsWith("/chat/completions") || url.pathname.endsWith("/completions") || url.pathname.endsWith("/embeddings") || url.pathname.endsWith("/models")) {
-    return openai.fetch(request);
+    return openai.fetch(request, env);
   }
 
   const targetUrl = `https://generativelanguage.googleapis.com${pathname}${search}`;
 
   try {
     const headers = new Headers();
-    for (const [key, value] of request.headers.entries()) {
-      if (key.trim().toLowerCase() === 'x-goog-api-key') {
+    for (const [headerKey, value] of request.headers.entries()) {
+      if (headerKey.trim().toLowerCase() === 'x-goog-api-key') {
+        let reqKey = value.trim();
+        
+        if (env && env.pwd && env.key) {
+          if (reqKey !== env.pwd) {
+            return new Response('Unauthorized', { status: 401 });
+          }
+          try {
+            const keysArray = JSON.parse(env.key);
+            if (Array.isArray(keysArray) && keysArray.length > 0) {
+              const selectedKey = keysArray[Math.floor(Math.random() * keysArray.length)];
+              console.log(`Gemini Selected API Key from env JSON: ${selectedKey}`);
+              headers.set('x-goog-api-key', selectedKey);
+              continue;
+            }
+          } catch(e) {
+            console.error("Failed to parse env.key as JSON array", e);
+          }
+        }
+
         const apiKeys = value.split(',').map(k => k.trim()).filter(k => k);
         if (apiKeys.length > 0) {
           const selectedKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
@@ -36,9 +55,9 @@ export async function handleRequest(request) {
           headers.set('x-goog-api-key', selectedKey);
         }
       } else {
-        if (key.trim().toLowerCase()==='content-type')
+        if (headerKey.trim().toLowerCase()==='content-type')
         {
-           headers.set(key, value);
+           headers.set(headerKey, value);
         }
       }
     }
